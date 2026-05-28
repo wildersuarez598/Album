@@ -1,13 +1,13 @@
 import { useMemo } from 'react';
-import { Search, Shuffle, Layers } from 'lucide-react';
+import { Search, Layers } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
-import { StickerStatus } from '../types';
+import { StickerCard } from '../components/album/StickerCard';
 
-const filters: { label: string; value: StickerStatus | 'all' }[] = [
-  { label: 'Todas', value: 'all' },
-  { label: 'Faltantes', value: 'missing' },
-  { label: 'Repetidas', value: 'duplicate' },
-  { label: 'Completadas', value: 'owned' }
+const filters = [
+  { label: 'Todas', value: 'all' as const },
+  { label: 'Faltantes', value: 'missing' as const },
+  { label: 'Tengo', value: 'owned' as const },
+  { label: 'Repetidas', value: 'duplicate' as const }
 ];
 
 export function AlbumPage() {
@@ -24,12 +24,21 @@ export function AlbumPage() {
           sticker.number.toString().includes(query);
 
         const matchesFilter =
-          activeFilter === 'all' || (activeFilter === 'completed' ? sticker.status === 'owned' : sticker.status === activeFilter);
+          activeFilter === 'all' || sticker.status === activeFilter;
 
         return matchesSearch && matchesFilter;
       }),
     [stickers, activeFilter, search]
   );
+
+  const stats = {
+    total: stickers.length,
+    owned: stickers.filter((s) => s.status === 'owned').length,
+    missing: stickers.filter((s) => s.status === 'missing').length,
+    duplicates: stickers.filter((s) => s.status === 'duplicate').reduce((acc, s) => acc + s.quantity, 0)
+  };
+
+  const completion = stats.total > 0 ? Math.round((stats.owned / stats.total) * 100) : 0;
 
   return (
     <section className="space-y-6">
@@ -39,13 +48,41 @@ export function AlbumPage() {
             <p className="text-sm uppercase tracking-[0.35em] text-slate-500">Álbum</p>
             <h2 className="mt-2 text-2xl font-semibold text-slate-100">Administra tus láminas</h2>
           </div>
-          <button className="inline-flex items-center gap-2 rounded-3xl bg-panini-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-panini-500">
-            <Shuffle className="h-4 w-4" />
-            Ordenar repetidas
-          </button>
+          <div className="text-right">
+            <p className="text-sm text-slate-500">Progreso</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-100">{completion}%</p>
+          </div>
         </div>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-[1.5fr_1fr]">
+        <div className="mt-6 h-3 overflow-hidden rounded-full bg-slate-900">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-panini-500 to-panini-400 transition-all"
+            style={{ width: `${completion}%` }}
+          />
+        </div>
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-4">
+          <div className="rounded-3xl border border-slate-800 bg-slate-900 p-4 text-center">
+            <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Total</p>
+            <p className="mt-2 text-2xl font-semibold text-slate-100">{stats.total}</p>
+          </div>
+          <div className="rounded-3xl border border-green-800 bg-green-950/30 p-4 text-center">
+            <p className="text-xs uppercase tracking-[0.25em] text-green-400">Tengo</p>
+            <p className="mt-2 text-2xl font-semibold text-green-200">{stats.owned}</p>
+          </div>
+          <div className="rounded-3xl border border-red-800 bg-red-950/30 p-4 text-center">
+            <p className="text-xs uppercase tracking-[0.25em] text-red-400">Faltantes</p>
+            <p className="mt-2 text-2xl font-semibold text-red-200">{stats.missing}</p>
+          </div>
+          <div className="rounded-3xl border border-yellow-800 bg-yellow-950/30 p-4 text-center">
+            <p className="text-xs uppercase tracking-[0.25em] text-yellow-400">Repetidas</p>
+            <p className="mt-2 text-2xl font-semibold text-yellow-200">{stats.duplicates}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-3xl border border-slate-800 bg-slate-950/90 p-5 shadow-soft">
+        <div className="grid gap-4 sm:grid-cols-[1.5fr_1fr]">
           <label className="relative block rounded-3xl border border-slate-800 bg-slate-900 p-3">
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
             <input
@@ -61,7 +98,7 @@ export function AlbumPage() {
               <button
                 key={filter.value}
                 type="button"
-                onClick={() => setFilter(filter.value as any)}
+                onClick={() => setFilter(filter.value)}
                 className={`rounded-3xl border px-4 py-3 text-sm font-semibold transition ${
                   activeFilter === filter.value
                     ? 'border-panini-400 bg-panini-800 text-white'
@@ -75,54 +112,24 @@ export function AlbumPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="space-y-4">
-          <div className="rounded-3xl border border-slate-800 bg-slate-950/90 p-5 shadow-soft">
-            <div className="flex items-center gap-3">
-              <Layers className="h-5 w-5 text-panini-400" />
-              <h3 className="text-lg font-semibold text-slate-100">Láminas encontradas</h3>
-            </div>
-            <p className="mt-3 text-sm text-slate-400">{filteredStickers.length} resultados según tus filtros y búsqueda.</p>
-          </div>
-
-          <div className="grid gap-3">
-            {filteredStickers.length === 0 ? (
-              <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6 text-center text-slate-400">
-                No hay coincidencias. Intenta otro número o selección.
-              </div>
-            ) : (
-              filteredStickers.map((sticker) => (
-                <article key={sticker.id} className="flex items-center justify-between gap-3 rounded-3xl border border-slate-800 bg-slate-900 p-4">
-                  <div>
-                    <p className="text-sm text-slate-500">#{sticker.number}</p>
-                    <h4 className="mt-1 text-lg font-semibold text-slate-100">{sticker.team}</h4>
-                    <p className="text-sm text-slate-400">{sticker.category}</p>
-                  </div>
-                  <div className="flex flex-col items-end gap-2 text-right">
-                    <span className="rounded-full bg-slate-800 px-3 py-1 text-xs uppercase tracking-[0.25em] text-slate-300">
-                      {sticker.status}
-                    </span>
-                    <span className="text-sm font-semibold text-slate-100">x{sticker.quantity}</span>
-                  </div>
-                </article>
-              ))
-            )}
-          </div>
+      <div className="space-y-4">
+        <div className="flex items-center gap-3 rounded-3xl border border-slate-800 bg-slate-950/90 p-5 shadow-soft">
+          <Layers className="h-5 w-5 text-panini-400" />
+          <h3 className="text-lg font-semibold text-slate-100">Láminas {filteredStickers.length}</h3>
+          <p className="ml-auto text-sm text-slate-400">Click en el estado para cambiar</p>
         </div>
 
-        <aside className="space-y-4 rounded-3xl border border-slate-800 bg-slate-950/90 p-5 shadow-soft">
-          <h3 className="text-lg font-semibold text-slate-100">Resumen rápido</h3>
-          <div className="grid gap-3">
-            <div className="rounded-3xl border border-slate-800 bg-slate-900 p-4">
-              <p className="text-sm text-slate-400">Repetidas</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-100">{stickers.filter((item) => item.status === 'duplicate').length}</p>
-            </div>
-            <div className="rounded-3xl border border-slate-800 bg-slate-900 p-4">
-              <p className="text-sm text-slate-400">Faltantes</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-100">{stickers.filter((item) => item.status === 'missing').length}</p>
-            </div>
+        {filteredStickers.length === 0 ? (
+          <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6 text-center text-slate-400">
+            No hay coincidencias. Intenta otro número o selección.
           </div>
-        </aside>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+            {filteredStickers.map((sticker) => (
+              <StickerCard key={sticker.id} sticker={sticker} />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

@@ -1,6 +1,6 @@
 export type StickerStatus = 'missing' | 'owned' | 'duplicate';
 
-export type AlbumFilter = 'all' | 'missing' | 'duplicate' | 'completed';
+export type AlbumFilter = 'all' | 'missing' | 'duplicate' | 'owned';
 
 export interface Sticker {
   id: string;
